@@ -15,7 +15,7 @@ Resources:
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: PopulateFrontendContent
-      CodeUri: src/PopulateFrontendContent
+      CodeUri: src/populateFrontendContent
       Handler: index.handler
       Runtime: nodejs8.10
       MemorySize: 3008

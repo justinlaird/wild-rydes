@@ -70,6 +70,56 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref UserPool
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
+        - ResourceName: Api
+      StageName: !Ref EnvironmentAPIGatewayStageName
+      DefinitionBody:
+        swagger: '2.0'
+        info: {}
+        paths:
+          /ride:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RequestUnicorn.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowOrigin: '''*'''
+        AllowHeaders: '''Authorization,Content-Type'''
+  RequestUnicorn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-RequestUnicorn
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: RequestUnicorn
+      CodeUri: src/requestUnicorn
+      Handler: index.handler
+      Runtime: nodejs8.10
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+      Environment:
+        Variables:
+          UNICORN_STABLE_API: !Ref EnvConfigunicornStableApiAsString
+      Events:
+        ApiPOSTride:
+          Type: Api
+          Properties:
+            Path: /ride
+            Method: POST
+            RestApiId: !Ref Api
+    Metadata:
+      StackeryName: RequestUnicorn
 Parameters:
   StackTagName:
     Type: String
@@ -80,3 +130,12 @@ Parameters:
   DeploymentTimestamp:
     Type: Number
     Description: Deployment preparation timestamp in milliseconds Since Epoch (injected by Stackery at deployment time)
+  EnvironmentAPIGatewayStageName:
+    Type: String
+    Description: Environment name used for API Gateway Stage names (injected by Stackery at deployment time)
+  EnvConfigunicornStableApiAsString:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /<EnvironmentName>/unicornStableApi
+Metadata:
+  EnvConfigParameters:
+    EnvConfigunicornStableApiAsString: unicornStableApi

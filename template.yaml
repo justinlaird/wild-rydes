@@ -48,6 +48,7 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           USER_POOL_ARN: !GetAtt UserPool.Arn
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          API_URL: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
     Metadata:
       StackeryName: PopulateFrontendContent
   PopulateFrontendContentDeployTrigger:
@@ -108,9 +109,16 @@ Resources:
       Tracing: Active
       Policies:
         - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Rides
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:/${EnvironmentTagName}/*
       Environment:
         Variables:
           UNICORN_STABLE_API: !Ref EnvConfigunicornStableApiAsString
+          TABLE_NAME: !Ref Rides
+          TABLE_ARN: !GetAtt Rides.Arn
+          SECRETS_NAMESPACE: !Sub /${EnvironmentTagName}/
       Events:
         ApiPOSTride:
           Type: Api
@@ -120,6 +128,21 @@ Resources:
             RestApiId: !Ref Api
     Metadata:
       StackeryName: RequestUnicorn
+  Rides:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: RideId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: RideId
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      TableName: !Sub ${AWS::StackName}-Rides
+    Metadata:
+      StackeryName: Rides
 Parameters:
   StackTagName:
     Type: String
